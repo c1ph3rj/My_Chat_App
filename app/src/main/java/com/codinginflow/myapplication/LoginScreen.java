@@ -1,35 +1,20 @@
 package com.codinginflow.myapplication;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.text.Html;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.firebase.FirebaseException;
-import com.google.firebase.FirebaseTooManyRequestsException;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
-import com.google.firebase.auth.FirebaseAuthMissingActivityForRecaptchaException;
-import com.google.firebase.auth.PhoneAuthCredential;
-import com.google.firebase.auth.PhoneAuthOptions;
-import com.google.firebase.auth.PhoneAuthProvider;
-
-import java.util.concurrent.TimeUnit;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class LoginScreen extends AppCompatActivity {
+    static String mobileNumber;
     TextView mobileNoView;
     Button sendOtpBtn;
-    static String mobileNumber;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,4 +51,30 @@ public class LoginScreen extends AppCompatActivity {
         }
     }
 
+
+    @Override
+    public void onBackPressed() {
+        // Build the alert dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Do you want to exit?");
+        builder.setCancelable(false);
+
+        // Set up the buttons
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // If the user clicks "Yes", close the app
+                finishAffinity();
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // If the user clicks "No", close the dialog and stay in the app
+                dialog.cancel();
+            }
+        });
+
+        // Show the alert dialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
 }

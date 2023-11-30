@@ -2,17 +2,18 @@ package com.codinginflow.myapplication;
 
 import static com.codinginflow.myapplication.LoginScreen.mobileNumber;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -70,7 +71,7 @@ public class LoginOtpScreen extends AppCompatActivity {
             mResendToken = token;
         }
     };
-
+    private long mLastClickTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,7 +89,7 @@ public class LoginOtpScreen extends AppCompatActivity {
             PhoneAuthOptions options =
                     PhoneAuthOptions.newBuilder(firebaseAuth)
                             .setPhoneNumber("+91" + mobileNumber)
-                            .setTimeout(60L, TimeUnit.SECONDS)
+                            .setTimeout(120L, TimeUnit.SECONDS)
                             .setActivity(LoginOtpScreen.this)
                             .setCallbacks(mCallbacks)
                             .build();
@@ -113,9 +114,15 @@ public class LoginOtpScreen extends AppCompatActivity {
             verifyBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    // Preventing double click.
+                    if (SystemClock.elapsedRealtime() - mLastClickTime < 3000) {
+                        return;
+                    }
+                    mLastClickTime = SystemClock.elapsedRealtime();
+
                     String otp = otpView.getText().toString();
 
-                    if(otp.length() < 6) {
+                    if (otp.length() < 6) {
                         Toast.makeText(LoginOtpScreen.this, "Please enter valid otp to continue!", Toast.LENGTH_SHORT).show();
                         return;
                     }
@@ -138,7 +145,13 @@ public class LoginOtpScreen extends AppCompatActivity {
                             // Sign in success, update UI with the signed-in user's information
 
                             FirebaseUser user = task.getResult().getUser();
-                            startActivity(new Intent(LoginOtpScreen.this, DashboardScreen.class));
+
+                            if (user != null) {
+                                startActivity(new Intent(LoginOtpScreen.this, DashboardScreen.class));
+                            } else {
+                                Toast.makeText(LoginOtpScreen.this, "Something went wrong!", Toast.LENGTH_SHORT).show();
+                            }
+
                             // Update UI
                         } else {
                             // Sign in failed, display a message and update the UI

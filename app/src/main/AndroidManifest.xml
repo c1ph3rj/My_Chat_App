@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
+            android:name=".UserDetailsScreen"
+            android:exported="false" />
+        <activity
             android:name=".LoginOtpScreen"
             android:exported="false" />
         <activity
