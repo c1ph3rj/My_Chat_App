@@ -1,9 +1,9 @@
 package com.codinginflow.myapplication;
 
 public class ChatMessage {
-    private String senderId;
-    private String message;
-    private long timestamp;
+    public String senderId;
+    public String message;
+    public long timestamp;
 
     public ChatMessage() {
         // Default constructor required for Firebase

@@ -9,10 +9,12 @@ import androidx.annotation.NonNull;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.common.collect.Lists;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
@@ -46,6 +48,7 @@ public class FirebaseHelper {
         void onMessagedLoaded(ArrayList<UserDetails> userDetailsList);
     }
 
+
     public void fetchMessagesAndUserDetails(LoadMessagesCallBack callback) {
         // Query messages where currentUserUUID is in the array
         if (currentUserDetails == null) {
@@ -69,13 +72,15 @@ public class FirebaseHelper {
                 UserDetails userDetails = task.getResult().toObject(UserDetails.class);
                 // Extract otherUserUUIDs from the messages
                 if (userDetails != null) {
-                    for (String eachChatsId : userDetails.messages) {
-                        String eachUUID = eachChatsId.replace(currentUser.getUid(), "");
-                        otherUserUUIDs.add(eachUUID);
-                    }
+                    if(userDetails.messages != null && !userDetails.messages.isEmpty()) {
+                        for (String eachChatsId : userDetails.messages) {
+                            String eachUUID = eachChatsId.replace(currentUser.getUid(), "");
+                            otherUserUUIDs.add(eachUUID);
+                        }
 
-                    // Fetch user details for each otherUserUUID
-                    fetchUserDetailsForUUIDs(otherUserUUIDs, callback);
+                        // Fetch user details for each otherUserUUID
+                        fetchUserDetailsForUUIDs(otherUserUUIDs, callback, userDetails.messages);
+                    }
                 }
             } else {
                 // Handle errors
@@ -83,7 +88,7 @@ public class FirebaseHelper {
         });
     }
 
-    private void fetchUserDetailsForUUIDs(ArrayList<String> userUUIDs, LoadMessagesCallBack callback) {
+    private void fetchUserDetailsForUUIDs(ArrayList<String> userUUIDs, LoadMessagesCallBack callback, ArrayList<String> messages) {
         ArrayList<UserDetails> userDetailsList = new ArrayList<>();
 
         // Fetch user details for each userUUID
@@ -94,6 +99,7 @@ public class FirebaseHelper {
                     if (document.exists()) {
                         UserDetails userDetails = document.toObject(UserDetails.class);
                         if (userDetails != null) {
+                            userDetails.messageId = messages.get(userUUIDs.indexOf(userUUID));
                             userDetailsList.add(userDetails);
                         }
                     }
@@ -113,10 +119,10 @@ public class FirebaseHelper {
     void sendMessage(String senderId, ChatMessage chatMessage, String receiverId) {
         ArrayList<String> messages = currentUserDetails.messages;
         String messageId = senderId + receiverId;
-        if(messages.stream().allMatch((eachMessages) -> (eachMessages.replace(senderId, "").equals(receiverId)))) {
-            for(String oldMessageId : messages) {
+        if (messages != null && !messages.isEmpty() &&messages.stream().allMatch((eachMessages) -> (eachMessages.replace(senderId, "").equals(receiverId)))) {
+            for (String oldMessageId : messages) {
                 String otherId = oldMessageId.replace(senderId, "");
-                if(otherId.equals(receiverId)) {
+                if (otherId.equals(receiverId)) {
                     messageId = messages.get(messages.indexOf(oldMessageId));
                 }
             }
@@ -150,9 +156,10 @@ public class FirebaseHelper {
                                             Log.e("FirebaseHelper", "Error adding message reference to user's document: " + task.getException().getMessage());
                                         }
                                     });
+
+                            messagesRef.child(finalMessageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
                         }
                     }
-                    messagesRef.child(finalMessageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
                 }
 
                 @Override
@@ -274,4 +281,67 @@ public class FirebaseHelper {
         return phoneNumber.startsWith("0") ? phoneNumber.substring(1) : phoneNumber;
     }
 
+    public interface LoadChatsCallBack {
+        void onChatsLoaded(List<ChatMessage> chatMessageList, boolean hasMore);
+    }
+
+    public void fetchChatsForMessageId(String messageId, int pageSize, LoadChatsCallBack callback) {
+        DatabaseReference messageRef = messagesRef.child(messageId);
+
+        Query query = messageRef.limitToLast(pageSize);
+
+        query.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DataSnapshot dataSnapshot = task.getResult();
+                    if (dataSnapshot != null) {
+                        List<ChatMessage> chatMessageList = new ArrayList<>();
+                        for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
+                            ChatMessage chatMessage = chatSnapshot.getValue(ChatMessage.class);
+                            if (chatMessage != null) {
+                                chatMessageList.add(chatMessage);
+                            }
+                        }
+
+                        // Check if there are more messages
+                        boolean hasMore = chatMessageList.size() == pageSize;
+
+                        // Remove the first item if it was included for querying purposes
+                        if (hasMore) {
+                            chatMessageList.remove(0);
+                        }
+
+                        callback.onChatsLoaded(chatMessageList, hasMore);
+                    }
+                } else {
+                    // Handle errors
+                    Log.e("FirebaseHelper", "Error fetching chats: " + task.getException().getMessage());
+                }
+            }
+        });
+    }
+
+    public interface RealtimeDataListener<ChatMessage> {
+        void onDataAdded(ChatMessage data);
+        void onDataChanged(ChatMessage data);
+        void onDataRemoved(ChatMessage data);
+        void onError(DatabaseError databaseError);
+    }
+
+    public <T> void addRealtimeDataListener(String messageId, RealtimeDataListener<ChatMessage> listener) {
+        messagesRef.child(messageId).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                ArrayList<DataSnapshot> allDataSnapshots = Lists.newArrayList(dataSnapshot.getChildren());
+                ChatMessage chatData = allDataSnapshots.get(allDataSnapshots.size() - 1).getValue(ChatMessage.class);
+                listener.onDataAdded(chatData);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                listener.onError(databaseError);
+            }
+        });
+    }
 }

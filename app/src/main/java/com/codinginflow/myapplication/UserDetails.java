@@ -9,7 +9,8 @@ public class UserDetails implements Serializable {
     public String phoneNumber;
     public String profilePic;
     public String aboutDetails;
-    public ArrayList<String> messages = new ArrayList<>();
+    public String messageId;
+    public ArrayList<String> messages;
     public UserDetails() {
     }
 }

@@ -10,4 +10,6 @@
 
     <color name="lightBlue">#F7FAFA</color>
     <color name="linkBlue">#3366CC</color>
+    <color name="receiverSide">#9AD0C2</color>
+    <color name="senderSide">#ECF4D6</color>
 </resources>
