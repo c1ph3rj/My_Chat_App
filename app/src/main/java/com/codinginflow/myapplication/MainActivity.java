@@ -13,6 +13,8 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     FirebaseAuth firebaseAuth;
     static UserDetails currentUserDetails;
@@ -43,12 +45,19 @@ public class MainActivity extends AppCompatActivity {
                     Intent intent;
                     if (currentUser != null) {
                         // if the user logged in redirect the user to the dashboard screen.
-                        new FirebaseHelper().getUserDetailsById(currentUser.getUid()).
+                        FirebaseHelper firebaseHelper = new FirebaseHelper();
+                        firebaseHelper.getUserDetailsById(currentUser.getUid()).
                                 addOnCompleteListener(new OnCompleteListener<UserDetails>() {
                                     @Override
                                     public void onComplete(@NonNull Task<UserDetails> task) {
                                         if(task.isSuccessful()) {
                                             currentUserDetails = task.getResult();
+                                            firebaseHelper.addCurrentUserDetailsListener(new FirebaseHelper.OnCurrentUserDetailsChangedListener() {
+                                                @Override
+                                                public void onCurrentUserDetailsChanged(UserDetails updatedUserDetails) {
+                                                    currentUserDetails = updatedUserDetails;
+                                                }
+                                            });
                                         }
                                     }
                                 });

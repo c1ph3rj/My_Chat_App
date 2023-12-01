@@ -1,20 +1,17 @@
 package com.codinginflow.myapplication;
 
 import static com.codinginflow.myapplication.DashboardScreen.currentUser;
-import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
 import com.google.firebase.database.DatabaseError;
 
@@ -34,6 +31,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
     boolean isPaginationEnabled;
     String messageId;
     int PAGE_SIZE = 30;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,9 +42,9 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
         Intent intent = getIntent();
         if (intent.hasExtra("user")) {
             UserDetails userDetails = (UserDetails) intent.getSerializableExtra("user");
-            if(userDetails != null) {
+            if (userDetails != null) {
                 chatUser = userDetails;
-                if(chatUser.messageId != null) {
+                if (chatUser.messageId != null) {
                     messageId = chatUser.messageId;
                 } else {
                     messageId = currentUser.getUid() + chatUser.uuid;
@@ -81,7 +79,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                 @Override
                 public void onClick(View v) {
                     String messageText = messageTextView.getText().toString().trim();
-                    if(messageText.isEmpty()) {
+                    if (messageText.isEmpty()) {
                         return;
                     }
 
@@ -91,7 +89,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                     chatMessage.senderId = currentUser.getUid();
                     chatMessage.timestamp = System.currentTimeMillis();
 
-                    firebaseHelper.sendMessage(currentUser.getUid(), chatMessage, chatUser.uuid);
+                    firebaseHelper.sendMessage(currentUser.getUid(), chatMessage, chatUser);
                     messageTextView.setText("");
                 }
             });

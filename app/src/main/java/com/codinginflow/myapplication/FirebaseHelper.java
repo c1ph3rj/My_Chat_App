@@ -6,10 +6,13 @@ import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.common.collect.Lists;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -22,6 +25,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.auth.User;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,7 +76,7 @@ public class FirebaseHelper {
                 UserDetails userDetails = task.getResult().toObject(UserDetails.class);
                 // Extract otherUserUUIDs from the messages
                 if (userDetails != null) {
-                    if(userDetails.messages != null && !userDetails.messages.isEmpty()) {
+                    if (userDetails.messages != null && !userDetails.messages.isEmpty()) {
                         for (String eachChatsId : userDetails.messages) {
                             String eachUUID = eachChatsId.replace(currentUser.getUid(), "");
                             otherUserUUIDs.add(eachUUID);
@@ -116,13 +120,13 @@ public class FirebaseHelper {
         }
     }
 
-    void sendMessage(String senderId, ChatMessage chatMessage, String receiverId) {
+    void sendMessage(String senderId, ChatMessage chatMessage, UserDetails chatUser) {
         ArrayList<String> messages = currentUserDetails.messages;
-        String messageId = senderId + receiverId;
-        if (messages != null && !messages.isEmpty() &&messages.stream().allMatch((eachMessages) -> (eachMessages.replace(senderId, "").equals(receiverId)))) {
+        String messageId = chatUser.messageId;
+        if (messages != null && !messages.isEmpty() && messages.stream().allMatch((eachMessages) -> (eachMessages.replace(senderId, "").equals(chatUser.uuid)))) {
             for (String oldMessageId : messages) {
                 String otherId = oldMessageId.replace(senderId, "");
-                if (otherId.equals(receiverId)) {
+                if (otherId.equals(chatUser.uuid)) {
                     messageId = messages.get(messages.indexOf(oldMessageId));
                 }
             }
@@ -134,27 +138,34 @@ public class FirebaseHelper {
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     if (!snapshot.exists()) {
                         if (currentUser != null) {
-                            FirebaseFirestore.getInstance()
-                                    .collection("users")
-                                    .document(currentUser.getUid())
-                                    .update("messages", FieldValue.arrayUnion(finalMessageId))
-                                    .addOnCompleteListener(task -> {
-                                        if (task.isSuccessful()) {
-                                            Log.d("FirebaseHelper", "Message reference added to user's document.");
-                                        } else {
-                                            Log.e("FirebaseHelper", "Error adding message reference to user's document: " + task.getException().getMessage());
+                            Map<String, Object> updateMap = new HashMap<>();
+                            updateMap.put("messages", FieldValue.arrayUnion(finalMessageId));
+
+                            usersCollection.document(senderId).set(updateMap, SetOptions.merge())
+                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void aVoid) {
+                                            // Handle success
+                                            System.out.println("Document updated successfully!");
                                         }
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        // Handle failure
+                                        System.err.println("Error updating document: " + e.getMessage());
                                     });
-                            FirebaseFirestore.getInstance()
-                                    .collection("users")
-                                    .document(receiverId)
-                                    .update("messages", FieldValue.arrayUnion(finalMessageId))
-                                    .addOnCompleteListener(task -> {
-                                        if (task.isSuccessful()) {
-                                            Log.d("FirebaseHelper", "Message reference added to user's document.");
-                                        } else {
-                                            Log.e("FirebaseHelper", "Error adding message reference to user's document: " + task.getException().getMessage());
+                            usersCollection
+                                    .document(chatUser.uuid)
+                                    .set(updateMap, SetOptions.merge())
+                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void aVoid) {
+                                            // Handle success
+                                            System.out.println("Document updated successfully!");
                                         }
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        // Handle failure
+                                        System.err.println("Error updating document: " + e.getMessage());
                                     });
 
                             messagesRef.child(finalMessageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
@@ -259,6 +270,14 @@ public class FirebaseHelper {
                 if (document.exists()) {
                     UserDetails userDetails = document.toObject(UserDetails.class);
                     if (userDetails != null) {
+                        if(currentUserDetails.messages != null) {
+                            for (String oldMessageId : currentUserDetails.messages) {
+                                String otherId = oldMessageId.replace(currentUser.getUid(), "");
+                                if (otherId.equals(userDetails.uuid)) {
+                                    userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
+                                }
+                            }
+                        }
                         userDetailsList.add(userDetails);
                     }
                 } else {
@@ -324,24 +343,66 @@ public class FirebaseHelper {
 
     public interface RealtimeDataListener<ChatMessage> {
         void onDataAdded(ChatMessage data);
+
         void onDataChanged(ChatMessage data);
+
         void onDataRemoved(ChatMessage data);
+
         void onError(DatabaseError databaseError);
     }
 
     public <T> void addRealtimeDataListener(String messageId, RealtimeDataListener<ChatMessage> listener) {
-        messagesRef.child(messageId).addValueEventListener(new ValueEventListener() {
+        messagesRef.child(messageId).addChildEventListener(new ChildEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                ArrayList<DataSnapshot> allDataSnapshots = Lists.newArrayList(dataSnapshot.getChildren());
-                ChatMessage chatData = allDataSnapshots.get(allDataSnapshots.size() - 1).getValue(ChatMessage.class);
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                ChatMessage chatData = snapshot.getValue(ChatMessage.class);
                 listener.onDataAdded(chatData);
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                listener.onError(databaseError);
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+                ChatMessage chatMessage = snapshot.getValue(ChatMessage.class);
+                listener.onDataRemoved(chatMessage);
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onError(error);
             }
         });
+    }
+
+    public void addCurrentUserDetailsListener(final OnCurrentUserDetailsChangedListener listener) {
+        usersCollection.document(currentUser.getUid()).addSnapshotListener((documentSnapshot, e) -> {
+            if (e != null) {
+                // Handle errors
+                System.err.println("Error listening for user details: " + e.getMessage());
+                return;
+            }
+
+            if (documentSnapshot != null && documentSnapshot.exists()) {
+                // DocumentSnapshot contains the current data
+                UserDetails currentUser = documentSnapshot.toObject(UserDetails.class); // Assuming User is your data model
+                if (currentUser != null) {
+                    // Notify listener about the updated user details
+                    listener.onCurrentUserDetailsChanged(currentUser);
+                }
+            }
+        });
+    }
+
+    // Interface to define a callback for user details changes
+    public interface OnCurrentUserDetailsChangedListener {
+        void onCurrentUserDetailsChanged(UserDetails updatedUser);
     }
 }
