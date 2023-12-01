@@ -1,6 +1,6 @@
 package com.codinginflow.myapplication;
 
-import static com.codinginflow.myapplication.DashboardScreen.currentUser;
+import static com.codinginflow.myapplication.MainActivity.currentUser;
 
 import android.content.Context;
 import android.view.LayoutInflater;

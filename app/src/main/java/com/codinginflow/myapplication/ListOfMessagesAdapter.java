@@ -12,6 +12,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
+
 import java.util.List;
 
 public class ListOfMessagesAdapter extends RecyclerView.Adapter<ListOfMessagesAdapter.UserViewHolder> {
@@ -35,6 +38,14 @@ public class ListOfMessagesAdapter extends RecyclerView.Adapter<ListOfMessagesAd
     public void onBindViewHolder(UserViewHolder holder, int position) {
         UserDetails userDetails = messagesList.get(position);
         holder.userNameTextView.setText(userDetails.userName);
+
+        if(userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
+            Glide.with((Context) activity)
+                    .load(userDetails.profilePic)
+                    .circleCrop()
+                    .error(R.drawable.profile_ic)
+                    .into(holder.profilePicImageView);
+        }
 
         holder.messageItemView.setOnClickListener(new View.OnClickListener() {
             @Override

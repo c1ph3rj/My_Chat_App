@@ -1,9 +1,15 @@
 package com.codinginflow.myapplication;
 
+import static com.codinginflow.myapplication.MainActivity.currentUser;
+import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
+
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -15,11 +21,13 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -28,7 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DashboardScreen extends AppCompatActivity implements FirebaseHelper.LoadMessagesCallBack {
-    static FirebaseUser currentUser;
     FloatingActionButton newMessagesView;
     ImageView userProfileView;
     ArrayList<UserDetails> listOfMessages;
@@ -59,7 +66,16 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
             newMessagesView = findViewById(R.id.newMessagesView);
             userProfileView = findViewById(R.id.userProfileView);
             listOfMessagesView = findViewById(R.id.listOfMessagesView);
-            listOfMessages = (ArrayList<UserDetails>) databaseHelper.getAllMessageDetails();
+            listOfMessages = databaseHelper.getAllMessageDetails();
+
+            try {
+                Drawable myFabSrc = AppCompatResources.getDrawable(this, R.drawable.message_ic);
+                Drawable willBeWhite = myFabSrc.getConstantState().newDrawable();
+                willBeWhite.mutate().setColorFilter(Color.WHITE, PorterDuff.Mode.MULTIPLY);
+                newMessagesView.setImageDrawable(willBeWhite);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             newMessagesView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -70,6 +86,16 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
                     }
                 }
             });
+
+            if(currentUserDetails != null) {
+                if(currentUserDetails.profilePic != null && !currentUserDetails.profilePic.isEmpty()) {
+                    Glide.with(this)
+                            .load(currentUserDetails.profilePic)
+                            .circleCrop()
+                            .error(R.drawable.profile_ic)
+                            .into(userProfileView);
+                }
+            }
 
             userProfileView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -146,7 +172,7 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
     @Override
     public void onMessagedLoaded(ArrayList<UserDetails> listOfMessages) {
         this.listOfMessages = listOfMessages;
-        if(!databaseHelper.getAllMessageDetails().isEmpty()) {
+        if(databaseHelper.getAllMessageDetails().isEmpty()) {
             databaseHelper.deleteAllUserDetails();
         }
         databaseHelper.addListOfUserDetails(listOfMessages);

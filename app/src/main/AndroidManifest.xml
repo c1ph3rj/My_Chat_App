@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
         android:allowBackup="true"
@@ -14,18 +18,22 @@
         android:theme="@style/Theme.MyApplication">
         <activity
             android:name=".ChatScreen"
+            android:theme="@style/Theme.customStatusBar"
             android:exported="false" />
         <activity
             android:name=".ContactsScreen"
+            android:theme="@style/Theme.customStatusBar"
             android:exported="false" />
         <activity
             android:name=".UserDetailsScreen"
+            android:theme="@style/Theme.customStatusBar"
             android:exported="false" />
         <activity
             android:name=".LoginOtpScreen"
             android:exported="false" />
         <activity
             android:name=".DashboardScreen"
+            android:theme="@style/Theme.customStatusBar"
             android:exported="false" />
         <activity
             android:name=".LoginScreen"

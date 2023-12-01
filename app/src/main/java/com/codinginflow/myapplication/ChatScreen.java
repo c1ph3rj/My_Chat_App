@@ -1,6 +1,6 @@
 package com.codinginflow.myapplication;
 
-import static com.codinginflow.myapplication.DashboardScreen.currentUser;
+import static com.codinginflow.myapplication.MainActivity.currentUser;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -94,7 +94,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                 }
             });
 
-            fetchInitialMessages();
+//            fetchInitialMessages();
             firebaseHelper.addRealtimeDataListener(messageId, this);
         } catch (Exception e) {
             e.printStackTrace();

@@ -13,10 +13,9 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-import java.util.List;
-
 public class MainActivity extends AppCompatActivity {
     FirebaseAuth firebaseAuth;
+    static FirebaseUser currentUser;
     static UserDetails currentUserDetails;
 
     @Override
@@ -35,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
             FirebaseApp.initializeApp(this);
 
             firebaseAuth = FirebaseAuth.getInstance();
-            FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+            currentUser = firebaseAuth.getCurrentUser();
 
             // Delaying the user login check for 1000ms (1s) by using handler.
             new Handler().postDelayed(new Runnable() {
@@ -50,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
                                 addOnCompleteListener(new OnCompleteListener<UserDetails>() {
                                     @Override
                                     public void onComplete(@NonNull Task<UserDetails> task) {
-                                        if(task.isSuccessful()) {
+                                        if (task.isSuccessful()) {
                                             currentUserDetails = task.getResult();
                                             firebaseHelper.addCurrentUserDetailsListener(new FirebaseHelper.OnCurrentUserDetailsChangedListener() {
                                                 @Override
@@ -58,18 +57,17 @@ public class MainActivity extends AppCompatActivity {
                                                     currentUserDetails = updatedUserDetails;
                                                 }
                                             });
+
+                                            startActivity(new Intent(MainActivity.this, DashboardScreen.class));
                                         }
                                     }
                                 });
-                        intent = new Intent(MainActivity.this, DashboardScreen.class);
                     } else {
                         // else redirect the user to the login screen.
-                        intent = new Intent(MainActivity.this, LoginScreen.class);
+                        startActivity(new Intent(MainActivity.this, LoginScreen.class));
                     }
-
-                    startActivity(intent);
                 }
-            }, 1000);
+            }, 500);
 
         } catch (Exception e) {
             e.printStackTrace();

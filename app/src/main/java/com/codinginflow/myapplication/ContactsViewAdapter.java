@@ -2,14 +2,19 @@ package com.codinginflow.myapplication;
 
 // UserDetailsAdapter.java
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
+
 import java.util.List;
 
 public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapter.ViewHolder> {
@@ -36,6 +41,14 @@ public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapte
 
         holder.usernameTextView.setText(userDetails.userName);
         holder.phoneNumberTextView.setText(userDetails.phoneNumber);
+
+        if(userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
+            Glide.with((Context) activity)
+                    .load(userDetails.profilePic)
+                    .circleCrop()
+                    .error(R.drawable.profile_ic)
+                    .into(holder.userIcon);
+        }
         holder.contactView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -54,6 +67,7 @@ public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapte
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView usernameTextView;
         TextView phoneNumberTextView;
+        ImageView userIcon;
         LinearLayout contactView;
 
         public ViewHolder(@NonNull View itemView) {
@@ -61,6 +75,7 @@ public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapte
             usernameTextView = itemView.findViewById(R.id.userNameView);
             phoneNumberTextView = itemView.findViewById(R.id.phoneNoView);
             contactView = itemView.findViewById(R.id.contactView);
+            userIcon = itemView.findViewById(R.id.userProfileView);
         }
     }
 }
