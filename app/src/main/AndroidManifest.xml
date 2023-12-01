@@ -3,6 +3,7 @@
     package="com.codinginflow.myapplication">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:allowBackup="true"
@@ -11,6 +12,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+        <activity
+            android:name=".ChatScreen"
+            android:exported="false" />
+        <activity
+            android:name=".ContactsScreen"
+            android:exported="false" />
         <activity
             android:name=".UserDetailsScreen"
             android:exported="false" />

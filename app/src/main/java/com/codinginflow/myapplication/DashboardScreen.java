@@ -1,35 +1,46 @@
 package com.codinginflow.myapplication;
 
+import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-public class DashboardScreen extends AppCompatActivity {
+import java.util.ArrayList;
+import java.util.List;
+
+public class DashboardScreen extends AppCompatActivity implements FirebaseHelper.LoadMessagesCallBack {
     static FirebaseUser currentUser;
-    Button signOutBtn;
+    FloatingActionButton newMessagesView;
+    ImageView userProfileView;
+    ArrayList<UserDetails> listOfMessages;
+    RecyclerView listOfMessagesView;
+    DatabaseHelper databaseHelper;
+    private static final int CONTACTS_PERMISSION_REQUEST_CODE = 123;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard_screen);
-
-        signOutBtn = findViewById(R.id.signOutBtn);
-        signOutBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FirebaseAuth.getInstance().signOut();
-                startActivity(new Intent(DashboardScreen.this, MainActivity.class));
-                finish();
-            }
-        });
+        getSupportActionBar().hide();
 
         init();
     }
@@ -37,6 +48,7 @@ public class DashboardScreen extends AppCompatActivity {
     void init() {
         try {
             currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            databaseHelper = new DatabaseHelper(this);
 
             if (currentUser != null && currentUser.getDisplayName() == null) {
                 Intent getUserDetailsIntent = new Intent(this, UserDetailsScreen.class);
@@ -44,6 +56,31 @@ public class DashboardScreen extends AppCompatActivity {
                 startActivity(getUserDetailsIntent);
             }
 
+            newMessagesView = findViewById(R.id.newMessagesView);
+            userProfileView = findViewById(R.id.userProfileView);
+            listOfMessagesView = findViewById(R.id.listOfMessagesView);
+            listOfMessages = (ArrayList<UserDetails>) databaseHelper.getAllMessageDetails();
+            newMessagesView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (hasContactsPermission()) {
+                        startActivity(new Intent(DashboardScreen.this, ContactsScreen.class));
+                    } else {
+                        requestContactsPermission();
+                    }
+                }
+            });
+
+            userProfileView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(DashboardScreen.this, UserDetailsScreen.class));
+                }
+            });
+
+            initListView();
+            FirebaseHelper firebaseHelper = new FirebaseHelper();
+            firebaseHelper.fetchMessagesAndUserDetails(this);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -51,27 +88,78 @@ public class DashboardScreen extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Build the alert dialog
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage("Do you want to exit?");
         builder.setCancelable(false);
 
-        // Set up the buttons
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                // If the user clicks "Yes", close the app
                 finishAffinity();
             }
         });
         builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                // If the user clicks "No", close the dialog and stay in the app
                 dialog.cancel();
             }
         });
 
-        // Show the alert dialog
         AlertDialog alertDialog = builder.create();
         alertDialog.show();
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == CONTACTS_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startActivity(new Intent(DashboardScreen.this, ContactsScreen.class));
+            } else {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS)) {
+                    Toast.makeText(this, "Contacts permission is required to proceed.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Contacts permission is required. Please enable it in the app settings.", Toast.LENGTH_LONG).show();
+                    redirectToAppSettings();
+                }
+            }
+        }
+    }
+
+    private boolean hasContactsPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestContactsPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.READ_CONTACTS},
+                CONTACTS_PERMISSION_REQUEST_CODE
+        );
+    }
+
+    private void redirectToAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onMessagedLoaded(ArrayList<UserDetails> listOfMessages) {
+        this.listOfMessages = listOfMessages;
+        if(!databaseHelper.getAllMessageDetails().isEmpty()) {
+            databaseHelper.deleteAllUserDetails();
+        }
+        databaseHelper.addListOfUserDetails(listOfMessages);
+        initListView();
+    }
+
+    private void initListView() {
+        try {
+            ListOfMessagesAdapter listOfMessagesAdapter = new ListOfMessagesAdapter(listOfMessages, this);
+            listOfMessagesView.setAdapter(listOfMessagesAdapter);
+            listOfMessagesView.setLayoutManager(new LinearLayoutManager(this));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

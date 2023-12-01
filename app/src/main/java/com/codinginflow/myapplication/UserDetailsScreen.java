@@ -3,6 +3,7 @@ package com.codinginflow.myapplication;
 import static com.codinginflow.myapplication.DashboardScreen.currentUser;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.View;
@@ -16,7 +17,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserProfileChangeRequest;
 
 public class UserDetailsScreen extends AppCompatActivity {
@@ -28,13 +32,32 @@ public class UserDetailsScreen extends AppCompatActivity {
     boolean isFirstTime;
     private long mLastClickTime = 0;
 
+    UserDetails currentUserDetails = null;
+    Button signOutBtn;
+
+    FirebaseHelper firestoreHelper = new FirebaseHelper();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_details_screen);
         getSupportActionBar().hide();
 
-        init();
+        if (isFirstTime) {
+            init();
+        } else {
+            firestoreHelper.getUserDetailsById(currentUser.getUid())
+                    .addOnSuccessListener(userDetails -> {
+                        if (userDetails != null) {
+                            currentUserDetails = userDetails;
+                        }
+                        init();
+                    })
+                    .addOnFailureListener(e -> {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Something went Wrong!", Toast.LENGTH_SHORT).show();
+                    });
+        }
     }
 
     void init() {
@@ -44,11 +67,32 @@ public class UserDetailsScreen extends AppCompatActivity {
             backBtn = findViewById(R.id.backBtn);
             profileView = findViewById(R.id.profileView);
             updateProfileButton = findViewById(R.id.updateBtn);
+            signOutBtn = findViewById(R.id.signOutBtn);
 
             isFirstTime = getIntent().getBooleanExtra("isFirstTime", false);
 
             if (isFirstTime) {
                 backBtn.setVisibility(View.GONE);
+                signOutBtn.setVisibility(View.GONE);
+            } else {
+                signOutBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        FirebaseAuth.getInstance().signOut();
+                        startActivity(new Intent(UserDetailsScreen.this, MainActivity.class));
+                        finish();
+                    }
+                });
+                backBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        onBackPressed();
+                    }
+                });
+                if(currentUserDetails != null) {
+                    userNameView.setText(currentUserDetails.userName);
+                    aboutView.setText(currentUserDetails.aboutDetails);
+                }
             }
 
             try {
@@ -81,23 +125,41 @@ public class UserDetailsScreen extends AppCompatActivity {
                         }
                     }
 
-                    if (currentUser.getDisplayName() != null && currentUser.getDisplayName().equals(userName)) {
-                        finish();
-                    } else {
-                        UserProfileChangeRequest userProfileChangeRequest = new UserProfileChangeRequest.Builder()
-                                .setDisplayName(userName)
-                                .build();
-
-                        currentUser.updateProfile(userProfileChangeRequest)
-                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    String aboutDetails = aboutView.getText().toString().trim();
+                    if (isFirstTime) {
+                        if (aboutDetails == null) {
+                            aboutDetails = "";
+                        }
+                        firestoreHelper.storeUserDetails(currentUser.getUid(), currentUser.getPhoneNumber().replace("+91", ""), userName, "", aboutDetails)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
                                     @Override
-                                    public void onComplete(@NonNull Task<Void> task) {
-                                        if (task.isSuccessful()) {
-                                            Toast.makeText(UserDetailsScreen.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
-                                        } else {
-                                            Toast.makeText(UserDetailsScreen.this, "Something went wrong!", Toast.LENGTH_SHORT).show();
-                                        }
-                                        finish();
+                                    public void onSuccess(Void unused) {
+                                        updateUserName(userName);
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Toast.makeText(UserDetailsScreen.this, "Error : " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                        try {
+                            firestoreHelper.storePhoneNumber(currentUser.getUid(), currentUser.getPhoneNumber().replace("+91", ""));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        firestoreHelper.updateUserInfo(currentUser.getUid(), userName, aboutDetails)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void unused) {
+                                        updateUserName(userName);
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Toast.makeText(UserDetailsScreen.this, "Error : " + e.getMessage(), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                     }
@@ -105,6 +167,29 @@ public class UserDetailsScreen extends AppCompatActivity {
             });
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void updateUserName(String userName) {
+        if (currentUser.getDisplayName() != null && currentUser.getDisplayName().equals(userName)) {
+            finish();
+        } else {
+            UserProfileChangeRequest userProfileChangeRequest = new UserProfileChangeRequest.Builder()
+                    .setDisplayName(userName)
+                    .build();
+
+            currentUser.updateProfile(userProfileChangeRequest)
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            if (task.isSuccessful()) {
+                                Toast.makeText(UserDetailsScreen.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(UserDetailsScreen.this, "Something went wrong!", Toast.LENGTH_SHORT).show();
+                            }
+                            finish();
+                        }
+                    });
         }
     }
 
