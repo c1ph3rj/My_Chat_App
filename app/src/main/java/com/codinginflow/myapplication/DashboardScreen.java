@@ -172,7 +172,7 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
     @Override
     public void onMessagedLoaded(ArrayList<UserDetails> listOfMessages) {
         this.listOfMessages = listOfMessages;
-        if(databaseHelper.getAllMessageDetails().isEmpty()) {
+        if(!databaseHelper.getAllMessageDetails().isEmpty()) {
             databaseHelper.deleteAllUserDetails();
         }
         databaseHelper.addListOfUserDetails(listOfMessages);
