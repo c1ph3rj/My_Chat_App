@@ -1,6 +1,7 @@
 package com.codinginflow.myapplication;
 
 // UserDetailsAdapter.java
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -42,7 +44,7 @@ public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapte
         holder.usernameTextView.setText(userDetails.userName);
         holder.phoneNumberTextView.setText(userDetails.phoneNumber);
 
-        if(userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
+        if (userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
             Glide.with((Context) activity)
                     .load(userDetails.profilePic)
                     .circleCrop()

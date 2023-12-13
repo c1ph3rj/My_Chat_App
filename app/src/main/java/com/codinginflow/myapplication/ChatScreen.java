@@ -43,11 +43,13 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
         if (intent.hasExtra("user")) {
             UserDetails userDetails = (UserDetails) intent.getSerializableExtra("user");
             if (userDetails != null) {
+                firebaseHelper = new FirebaseHelper();
                 chatUser = userDetails;
                 if (chatUser.messageId != null) {
                     messageId = chatUser.messageId;
                 } else {
-                    messageId = currentUser.getUid() + chatUser.uuid;
+                    messageId = firebaseHelper.generateChatId(currentUser.getUid(), chatUser.uuid);
+                    chatUser.messageId = messageId;
                 }
             }
         }
@@ -140,11 +142,6 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
     public void onDataAdded(ChatMessage data) {
         chatAdapter.addMessage(data);
         chatMessagesView.setSelection(chatAdapter.getCount() - 1);
-    }
-
-    @Override
-    public void onDataChanged(ChatMessage data) {
-
     }
 
     @Override

@@ -39,7 +39,7 @@ public class ListOfMessagesAdapter extends RecyclerView.Adapter<ListOfMessagesAd
         UserDetails userDetails = messagesList.get(position);
         holder.userNameTextView.setText(userDetails.userName);
 
-        if(userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
+        if (userDetails.profilePic != null && !userDetails.profilePic.isEmpty()) {
             Glide.with((Context) activity)
                     .load(userDetails.profilePic)
                     .circleCrop()

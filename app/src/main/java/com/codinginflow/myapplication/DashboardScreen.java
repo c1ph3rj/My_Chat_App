@@ -12,9 +12,9 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -30,18 +30,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class DashboardScreen extends AppCompatActivity implements FirebaseHelper.LoadMessagesCallBack {
+    private static final int CONTACTS_PERMISSION_REQUEST_CODE = 123;
     FloatingActionButton newMessagesView;
     ImageView userProfileView;
     ArrayList<UserDetails> listOfMessages;
     RecyclerView listOfMessagesView;
+    String oldProfile;
     DatabaseHelper databaseHelper;
-    private static final int CONTACTS_PERMISSION_REQUEST_CODE = 123;
+    FirebaseHelper firebaseHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,16 +87,6 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
                 }
             });
 
-            if(currentUserDetails != null) {
-                if(currentUserDetails.profilePic != null && !currentUserDetails.profilePic.isEmpty()) {
-                    Glide.with(this)
-                            .load(currentUserDetails.profilePic)
-                            .circleCrop()
-                            .error(R.drawable.profile_ic)
-                            .into(userProfileView);
-                }
-            }
-
             userProfileView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -105,8 +95,34 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
             });
 
             initListView();
-            FirebaseHelper firebaseHelper = new FirebaseHelper();
+            firebaseHelper = new FirebaseHelper();
+
+            updateUserDetails();
+            new Handler().post(new Runnable() {
+                @Override
+                public void run() {
+                    updateUserDetails();
+                    new Handler().postDelayed(this, 5000); // checking for every 5 sec
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    void updateUserDetails() {
+        try {
             firebaseHelper.fetchMessagesAndUserDetails(this);
+            if (currentUserDetails != null) {
+                if (currentUserDetails.profilePic != null && (oldProfile != null && !currentUserDetails.profilePic.equals(oldProfile)) && !currentUserDetails.profilePic.isEmpty()) {
+                    Glide.with(this)
+                            .load(currentUserDetails.profilePic)
+                            .circleCrop()
+                            .error(R.drawable.profile_ic)
+                            .into(userProfileView);
+                    oldProfile = currentUserDetails.profilePic;
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -163,6 +179,7 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
         );
     }
 
+
     private void redirectToAppSettings() {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -172,7 +189,7 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
     @Override
     public void onMessagedLoaded(ArrayList<UserDetails> listOfMessages) {
         this.listOfMessages = listOfMessages;
-        if(!databaseHelper.getAllMessageDetails().isEmpty()) {
+        if (!databaseHelper.getAllMessageDetails().isEmpty()) {
             databaseHelper.deleteAllUserDetails();
         }
         databaseHelper.addListOfUserDetails(listOfMessages);

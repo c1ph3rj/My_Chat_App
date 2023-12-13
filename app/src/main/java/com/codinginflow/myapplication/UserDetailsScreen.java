@@ -48,9 +48,7 @@ public class UserDetailsScreen extends AppCompatActivity {
     ImageView backBtn;
     Uri pickedImageUri;
     boolean isFirstTime;
-    private long mLastClickTime = 0;
     CustomProgressDialog progressDialog;
-
     UserDetails currentUserDetails = null;
     Button signOutBtn;
     FirebaseHelper firebaseHelper = new FirebaseHelper();
@@ -76,6 +74,7 @@ public class UserDetailsScreen extends AppCompatActivity {
             }
         }
     });
+    private long mLastClickTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,7 +123,13 @@ public class UserDetailsScreen extends AppCompatActivity {
                 signOutBtn.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        try {
+                            MainActivity.currentUserDetails = null;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         FirebaseAuth.getInstance().signOut();
+                        startActivity(new Intent(UserDetailsScreen.this, MainActivity.class));
                         startActivity(new Intent(UserDetailsScreen.this, MainActivity.class));
                         finish();
                     }
@@ -199,16 +204,16 @@ public class UserDetailsScreen extends AppCompatActivity {
                     final String[] photoUrl = {""};
                     if (isFirstTime) {
 
-                        if(pickedImageUri != null) {
+                        if (pickedImageUri != null) {
                             Task<Uri> uploadProfilePic = firebaseHelper.uploadProfilePic(pickedImageUri);
                             uploadProfilePic.addOnCompleteListener(new OnCompleteListener<Uri>() {
                                 @Override
                                 public void onComplete(@NonNull Task<Uri> task) {
-                                    if(task.isSuccessful()) {
+                                    if (task.isSuccessful()) {
                                         photoUrl[0] = task.getResult().toString();
                                         continueStoreUserDetails(userName, photoUrl[0], finalAboutDetails);
                                     } else {
-                                        if(progressDialog != null && progressDialog.isShowing()) {
+                                        if (progressDialog != null && progressDialog.isShowing()) {
                                             progressDialog.dismiss();
                                         }
                                         task.getException().printStackTrace();
@@ -220,16 +225,16 @@ public class UserDetailsScreen extends AppCompatActivity {
                         }
 
                     } else {
-                        if(pickedImageUri != null) {
+                        if (pickedImageUri != null) {
                             Task<Uri> uploadProfilePic = firebaseHelper.uploadProfilePic(pickedImageUri);
                             uploadProfilePic.addOnCompleteListener(new OnCompleteListener<Uri>() {
                                 @Override
                                 public void onComplete(@NonNull Task<Uri> task) {
-                                    if(task.isSuccessful()) {
+                                    if (task.isSuccessful()) {
                                         photoUrl[0] = task.getResult().toString();
                                         continueUpdateUserDetails(userName, photoUrl[0], finalAboutDetails);
                                     } else {
-                                        if(progressDialog != null && progressDialog.isShowing()) {
+                                        if (progressDialog != null && progressDialog.isShowing()) {
                                             progressDialog.dismiss();
                                         }
                                         task.getException().printStackTrace();
@@ -243,7 +248,7 @@ public class UserDetailsScreen extends AppCompatActivity {
                 }
             });
         } catch (Exception e) {
-            if(progressDialog != null && progressDialog.isShowing()) {
+            if (progressDialog != null && progressDialog.isShowing()) {
                 progressDialog.dismiss();
             }
             e.printStackTrace();
@@ -251,6 +256,9 @@ public class UserDetailsScreen extends AppCompatActivity {
     }
 
     private void continueUpdateUserDetails(String userName, String profileUrl, String aboutDetails) {
+        if (!(profileUrl != null && !profileUrl.trim().isEmpty())) {
+            profileUrl = currentUserDetails.profilePic;
+        }
         firebaseHelper.updateUserInfo(currentUser.getUid(), userName, aboutDetails, profileUrl)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
@@ -261,7 +269,7 @@ public class UserDetailsScreen extends AppCompatActivity {
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        if(progressDialog != null && progressDialog.isShowing()) {
+                        if (progressDialog != null && progressDialog.isShowing()) {
                             progressDialog.dismiss();
                         }
                         Toast.makeText(UserDetailsScreen.this, "Error : " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -280,7 +288,7 @@ public class UserDetailsScreen extends AppCompatActivity {
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        if(progressDialog != null && progressDialog.isShowing()) {
+                        if (progressDialog != null && progressDialog.isShowing()) {
                             progressDialog.dismiss();
                         }
                         Toast.makeText(UserDetailsScreen.this, "Error : " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -289,7 +297,7 @@ public class UserDetailsScreen extends AppCompatActivity {
         try {
             firebaseHelper.storePhoneNumber(currentUser.getUid(), currentUser.getPhoneNumber().replace("+91", ""));
         } catch (Exception e) {
-            if(progressDialog != null && progressDialog.isShowing()) {
+            if (progressDialog != null && progressDialog.isShowing()) {
                 progressDialog.dismiss();
             }
             e.printStackTrace();
@@ -308,15 +316,22 @@ public class UserDetailsScreen extends AppCompatActivity {
                     .addOnCompleteListener(new OnCompleteListener<Void>() {
                         @Override
                         public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(UserDetailsScreen.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
-                            } else {
-                                if(progressDialog != null && progressDialog.isShowing()) {
-                                    progressDialog.dismiss();
-                                }
-                                Toast.makeText(UserDetailsScreen.this, "Something went wrong!", Toast.LENGTH_SHORT).show();
-                            }
-                            finish();
+                            firebaseHelper.getUserDetailsById(currentUser.getUid())
+                                    .addOnCompleteListener(new OnCompleteListener<UserDetails>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<UserDetails> task) {
+                                            if (task.isSuccessful()) {
+                                                currentUserDetails = task.getResult();
+                                                Toast.makeText(UserDetailsScreen.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                if (progressDialog != null && progressDialog.isShowing()) {
+                                                    progressDialog.dismiss();
+                                                }
+                                                Toast.makeText(UserDetailsScreen.this, "Something went wrong!", Toast.LENGTH_SHORT).show();
+                                            }
+                                            finish();
+                                        }
+                                    });
                         }
                     });
         }

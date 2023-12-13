@@ -2,30 +2,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/messageItemView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp"
-        android:id="@+id/messageItemView"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
             android:layout_marginStart="5dp"
+            android:layout_marginEnd="12dp"
             app:cardCornerRadius="360dp">
 
             <ImageView
+                android:id="@+id/userProfileView"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:id="@+id/userProfileView"
-                android:src="@drawable/profile_ic"/>
+                android:src="@drawable/profile_ic" />
 
         </androidx.cardview.widget.CardView>
 
@@ -40,16 +40,16 @@
                 android:layout_height="wrap_content"
                 android:textSize="18dp"
                 android:textStyle="bold"
-                tools:text="userName"/>
+                tools:text="userName" />
 
             <TextView
                 android:id="@+id/lastMessageView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="14dp"
-                android:visibility="gone"
                 android:textStyle="bold"
-                tools:text="9092371640"/>
+                android:visibility="gone"
+                tools:text="9092371640" />
 
         </LinearLayout>
 
@@ -59,7 +59,7 @@
         android:layout_width="match_parent"
         android:layout_height=".5dp"
         android:layout_marginHorizontal="14dp"
-        android:background="@color/lightDarkBlue"/>
+        android:background="@color/lightDarkBlue" />
 
 
 </LinearLayout>

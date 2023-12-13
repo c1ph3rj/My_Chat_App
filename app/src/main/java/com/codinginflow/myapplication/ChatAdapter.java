@@ -21,6 +21,7 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage> {
     private final Context context;
     private final List<ChatMessage> messages;
     private boolean isLoading = false;
+
     public ChatAdapter(Context context, List<ChatMessage> messages) {
         super(context, 0, messages);
         this.context = context;
@@ -75,7 +76,7 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage> {
 
         ChatMessage message = getItem(position);
 
-        if(message != null) {
+        if (message != null) {
             viewHolder.messageTextView.setText(message.getMessage());
         }
 

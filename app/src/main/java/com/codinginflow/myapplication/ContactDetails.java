@@ -5,5 +5,6 @@ public class ContactDetails {
     public String mobileNumber;
     public String contactId;
 
-    public ContactDetails() {}
+    public ContactDetails() {
+    }
 }

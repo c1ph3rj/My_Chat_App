@@ -22,6 +22,48 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
     RecyclerView contactsView;
     ImageView backBtn;
 
+    @SuppressLint("Range")
+    public static ArrayList<ContactDetails> getAllContacts(Context context) {
+        ArrayList<ContactDetails> contactList = new ArrayList<>();
+        ContentResolver contentResolver = context.getContentResolver();
+
+        // Projection for the columns to retrieve
+        String[] projection = {
+                ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+        };
+
+        // Query to retrieve contacts
+        Cursor cursor = contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                null,
+                null,
+                ContactsContract.Contacts.DISPLAY_NAME + " ASC"
+        );
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                // Get contact details
+                String contactId = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+                String contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                String phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+
+                // Create ContactDetails object and add to the list
+
+                ContactDetails contactDetails = new ContactDetails();
+                contactDetails.mobileNumber = phoneNumber;
+                contactDetails.contactName = contactName;
+                contactDetails.contactId = contactId;
+                contactList.add(contactDetails);
+            }
+            cursor.close();
+        }
+
+        return contactList;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,49 +122,6 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
             e.printStackTrace();
             progressDialog.dismiss();
         }
-    }
-
-
-    @SuppressLint("Range")
-    public static ArrayList<ContactDetails> getAllContacts(Context context) {
-        ArrayList<ContactDetails> contactList = new ArrayList<>();
-        ContentResolver contentResolver = context.getContentResolver();
-
-        // Projection for the columns to retrieve
-        String[] projection = {
-                ContactsContract.Contacts._ID,
-                ContactsContract.Contacts.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-        };
-
-        // Query to retrieve contacts
-        Cursor cursor = contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
-                null,
-                null,
-                ContactsContract.Contacts.DISPLAY_NAME + " ASC"
-        );
-
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                // Get contact details
-                String contactId = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-                String contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                String phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-
-                // Create ContactDetails object and add to the list
-
-                ContactDetails contactDetails = new ContactDetails();
-                contactDetails.mobileNumber = phoneNumber;
-                contactDetails.contactName = contactName;
-                contactDetails.contactId = contactId;
-                contactList.add(contactDetails);
-            }
-            cursor.close();
-        }
-
-        return contactList;
     }
 
     @Override

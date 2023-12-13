@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class FirebaseHelper {
     private final CollectionReference usersCollection;
@@ -59,17 +60,13 @@ public class FirebaseHelper {
         return uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
             @Override
             public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                if(!task.isSuccessful()) {
+                if (!task.isSuccessful() && task.getException() != null) {
                     throw task.getException();
                 }
 
                 return storageRef.getDownloadUrl();
             }
         });
-    }
-
-    public interface LoadMessagesCallBack {
-        void onMessagedLoaded(ArrayList<UserDetails> userDetailsList);
     }
 
     public void fetchMessagesAndUserDetails(LoadMessagesCallBack callback) {
@@ -98,7 +95,7 @@ public class FirebaseHelper {
                 if (userDetails != null) {
                     if (userDetails.messages != null && !userDetails.messages.isEmpty()) {
                         for (String eachChatsId : userDetails.messages) {
-                            String eachUUID = eachChatsId.replace(currentUser.getUid(), "");
+                            String eachUUID = removeCurrentUserFromChatId(eachChatsId, currentUser.getUid());
                             otherUserUUIDs.add(eachUUID);
                         }
 
@@ -109,7 +106,9 @@ public class FirebaseHelper {
                     }
                 }
             } else {
-                // Handle errors
+                if (task.getException() != null) {
+                    Objects.requireNonNull(task.getException()).printStackTrace();
+                }
             }
         });
     }
@@ -125,16 +124,16 @@ public class FirebaseHelper {
                     if (document.exists()) {
                         UserDetails userDetails = document.toObject(UserDetails.class);
                         if (userDetails != null) {
-                            if(currentUserDetails.messages != null) {
+                            if (currentUserDetails.messages != null) {
                                 for (String oldMessageId : currentUserDetails.messages) {
-                                    String otherId = oldMessageId.replace(currentUser.getUid(), "");
+                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), oldMessageId);
                                     if (otherId.equals(userDetails.uuid)) {
                                         userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
                                     }
                                 }
 
-                                if(userDetails.messageId == null) {
-                                    userDetails.messageId = currentUser.getUid() + userDetails.uuid;
+                                if (userDetails.messageId == null) {
+                                    userDetails.messageId = generateChatId(currentUser.getUid(), userDetails.uuid);
                                 }
                             }
                             userDetailsList.add(userDetails);
@@ -153,12 +152,34 @@ public class FirebaseHelper {
         }
     }
 
+    public String generateChatId(String userId1, String userId2) {
+        // Sort the user IDs to ensure consistency
+        String smallerUserId = userId1.compareTo(userId2) < 0 ? userId1 : userId2;
+        String largerUserId = userId1.compareTo(userId2) < 0 ? userId2 : userId1;
+
+        // Concatenate the user IDs to create a unique chat ID
+        return smallerUserId + "_" + largerUserId;
+    }
+
+    private String removeCurrentUserFromChatId(String chatId, String currentUserUid) {
+        // Split the chat ID into user IDs using the underscore as a delimiter
+        String[] userIds = chatId.split("_");
+
+        if (userIds.length == 2) {
+            // Return the other user's ID as the modified chat ID
+            return userIds[0].equals(currentUserUid) ? userIds[1] : userIds[0];
+        } else {
+            // Handle invalid chat ID
+            return chatId;
+        }
+    }
+
     void sendMessage(String senderId, ChatMessage chatMessage, UserDetails chatUser) {
         ArrayList<String> messages = currentUserDetails.messages;
         String messageId = chatUser.messageId;
-        if (messages != null && !messages.isEmpty() && messages.stream().allMatch((eachMessages) -> (eachMessages.replace(senderId, "").equals(chatUser.uuid)))) {
+        if (messages != null && !messages.isEmpty() && messages.stream().allMatch((eachChatId) -> (removeCurrentUserFromChatId(eachChatId, senderId).equals(chatUser.uuid)))) {
             for (String oldMessageId : messages) {
-                String otherId = oldMessageId.replace(senderId, "");
+                String otherId = removeCurrentUserFromChatId(senderId, oldMessageId);
                 if (otherId.equals(chatUser.uuid)) {
                     messageId = messages.get(messages.indexOf(oldMessageId));
                 }
@@ -166,7 +187,7 @@ public class FirebaseHelper {
             messagesRef.child(messageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
         } else {
             String finalMessageId = messageId;
-            if(messageId != null) {
+            if (messageId != null) {
                 messagesRef.child(messageId).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -175,32 +196,8 @@ public class FirebaseHelper {
                                 Map<String, Object> updateMap = new HashMap<>();
                                 updateMap.put("messages", FieldValue.arrayUnion(finalMessageId));
 
-                                usersCollection.document(senderId).set(updateMap, SetOptions.merge())
-                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                            @Override
-                                            public void onSuccess(Void aVoid) {
-                                                // Handle success
-                                                System.out.println("Document updated successfully!");
-                                            }
-                                        })
-                                        .addOnFailureListener(e -> {
-                                            // Handle failure
-                                            System.err.println("Error updating document: " + e.getMessage());
-                                        });
-                                usersCollection
-                                        .document(chatUser.uuid)
-                                        .set(updateMap, SetOptions.merge())
-                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                            @Override
-                                            public void onSuccess(Void aVoid) {
-                                                // Handle success
-                                                System.out.println("Document updated successfully!");
-                                            }
-                                        })
-                                        .addOnFailureListener(e -> {
-                                            // Handle failure
-                                            System.err.println("Error updating document: " + e.getMessage());
-                                        });
+                                updateMessageDetails(senderId, updateMap);
+                                updateMessageDetails(chatUser.uuid, updateMap);
 
                                 messagesRef.child(finalMessageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
                             }
@@ -213,6 +210,25 @@ public class FirebaseHelper {
                     }
                 });
             }
+        }
+    }
+
+    public void updateMessageDetails(String userId, Map<String, Object> updateMap) {
+        try {
+            usersCollection.document(userId).set(updateMap, SetOptions.merge())
+                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            // Handle success
+                            System.out.println("Document updated successfully!");
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Handle failure
+                        System.err.println("Error updating document: " + e.getMessage());
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -240,7 +256,7 @@ public class FirebaseHelper {
             updates.put("aboutDetails", aboutDetails);
         }
 
-        if(profileUrl != null) {
+        if (profileUrl != null) {
             updates.put("profilePic", profileUrl);
         }
 
@@ -266,10 +282,6 @@ public class FirebaseHelper {
         phoneNumbersRef.child(phoneNumber).setValue(userId);
     }
 
-    public interface UserDetailsCallback {
-        void onUserDetailsFetched(List<UserDetails> userDetailsList);
-    }
-
     public void checkAndStoreUserDetails(List<ContactDetails> contactDetailsList, UserDetailsCallback callback) {
         List<UserDetails> userDetailsList = new ArrayList<>();
         for (ContactDetails contactDetails : contactDetailsList) {
@@ -277,7 +289,7 @@ public class FirebaseHelper {
             if (currentUser != null && currentUser.getPhoneNumber() != null && !currentUser.getPhoneNumber().contains(phoneNumber)) {
                 phoneNumbersRef.child(phoneNumber).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (dataSnapshot.exists()) {
                             String userId = dataSnapshot.getValue(String.class);
                             if (userId != null) {
@@ -309,19 +321,21 @@ public class FirebaseHelper {
                 if (document.exists()) {
                     UserDetails userDetails = document.toObject(UserDetails.class);
                     if (userDetails != null) {
-                        if(currentUserDetails.messages != null) {
-                            for (String oldMessageId : currentUserDetails.messages) {
-                                String otherId = oldMessageId.replace(currentUser.getUid(), "");
-                                if (otherId.equals(userDetails.uuid)) {
-                                    userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
+                        if (currentUserDetails != null) {
+                            if (currentUserDetails.messages != null) {
+                                for (String oldMessageId : currentUserDetails.messages) {
+                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), oldMessageId);
+                                    if (otherId.equals(userDetails.uuid)) {
+                                        userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
+                                    }
+                                }
+
+                                if (userDetails.messageId == null) {
+                                    userDetails.messageId = generateChatId(currentUser.getUid(), userDetails.uuid);
                                 }
                             }
-
-                            if(userDetails.messageId == null) {
-                                userDetails.messageId = currentUser.getUid() + userDetails.uuid;
-                            }
+                            userDetailsList.add(userDetails);
                         }
-                        userDetailsList.add(userDetails);
                     }
                 } else {
                     Log.d("FireStoreHelper", "User details do not exist for userId: " + userId);
@@ -331,8 +345,10 @@ public class FirebaseHelper {
                     callback.onUserDetailsFetched(userDetailsList);
                 }
             } else {
-                // Handle errors
-                Log.e("FireStoreHelper", "Error fetching user details: " + task.getException().getMessage());
+                if (task.getException() != null) {
+                    // Handle errors
+                    Log.e("FireStoreHelper", "Error fetching user details: " + task.getException().getMessage());
+                }
             }
         });
     }
@@ -341,10 +357,6 @@ public class FirebaseHelper {
         phoneNumber = phoneNumber.replaceAll("[.#\\$\\[\\]]", "");
         phoneNumber = phoneNumber.replace("+91", "");
         return phoneNumber.startsWith("0") ? phoneNumber.substring(1) : phoneNumber;
-    }
-
-    public interface LoadChatsCallBack {
-        void onChatsLoaded(List<ChatMessage> chatMessageList, boolean hasMore);
     }
 
     public void fetchChatsForMessageId(String messageId, int pageSize, LoadChatsCallBack callback) {
@@ -377,24 +389,16 @@ public class FirebaseHelper {
                         callback.onChatsLoaded(chatMessageList, hasMore);
                     }
                 } else {
-                    // Handle errors
-                    Log.e("FirebaseHelper", "Error fetching chats: " + task.getException().getMessage());
+                    if (task.getException() != null) {
+                        // Handle errors
+                        Log.e("FirebaseHelper", "Error fetching chats: " + task.getException().getMessage());
+                    }
                 }
             }
         });
     }
 
-    public interface RealtimeDataListener<ChatMessage> {
-        void onDataAdded(ChatMessage data);
-
-        void onDataChanged(ChatMessage data);
-
-        void onDataRemoved(ChatMessage data);
-
-        void onError(DatabaseError databaseError);
-    }
-
-    public <T> void addRealtimeDataListener(String messageId, RealtimeDataListener<ChatMessage> listener) {
+    public void addRealtimeDataListener(String messageId, RealtimeDataListener<ChatMessage> listener) {
         messagesRef.child(messageId).orderByChild("timestamp").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
@@ -440,6 +444,26 @@ public class FirebaseHelper {
                 }
             }
         });
+    }
+
+    public interface LoadMessagesCallBack {
+        void onMessagedLoaded(ArrayList<UserDetails> userDetailsList);
+    }
+
+    public interface UserDetailsCallback {
+        void onUserDetailsFetched(List<UserDetails> userDetailsList);
+    }
+
+    public interface LoadChatsCallBack {
+        void onChatsLoaded(List<ChatMessage> chatMessageList, boolean hasMore);
+    }
+
+    public interface RealtimeDataListener<ChatMessage> {
+        void onDataAdded(ChatMessage data);
+
+        void onDataRemoved(ChatMessage data);
+
+        void onError(DatabaseError databaseError);
     }
 
     // Interface to define a callback for user details changes

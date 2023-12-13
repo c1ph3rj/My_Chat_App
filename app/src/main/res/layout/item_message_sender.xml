@@ -3,21 +3,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingVertical="6dp"
-    android:paddingHorizontal="10dp">
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="6dp">
 
 
     <TextView
-        android:layout_width="wrap_content"
-        android:maxWidth="300dp"
-        android:layout_gravity="end"
-        android:layout_height="wrap_content"
-        android:background="@drawable/edit_text_background"
-        android:textColor="@color/black"
-        android:backgroundTint="@color/senderSide"
-        android:text="Hello World"
         android:id="@+id/messageTextView"
-        android:padding="10dp"/>
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:background="@drawable/edit_text_background"
+        android:backgroundTint="@color/senderSide"
+        android:maxWidth="300dp"
+        android:padding="10dp"
+        android:text="Hello World"
+        android:textColor="@color/black" />
 
 
 </LinearLayout>
