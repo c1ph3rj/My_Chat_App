@@ -10,7 +10,7 @@ public class UserDetails implements Serializable {
     public String profilePic;
     public String aboutDetails;
     public String messageId;
-    public ArrayList<String> messages;
+    public ArrayList<Message> messages;
 
     public UserDetails() {
     }

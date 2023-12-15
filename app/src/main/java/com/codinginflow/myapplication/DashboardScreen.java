@@ -114,7 +114,7 @@ public class DashboardScreen extends AppCompatActivity implements FirebaseHelper
         try {
             firebaseHelper.fetchMessagesAndUserDetails(this);
             if (currentUserDetails != null) {
-                if (currentUserDetails.profilePic != null && (oldProfile != null && !currentUserDetails.profilePic.equals(oldProfile)) && !currentUserDetails.profilePic.isEmpty()) {
+                if (currentUserDetails.profilePic != null && (!currentUserDetails.profilePic.equals(oldProfile)) && !currentUserDetails.profilePic.isEmpty()) {
                     Glide.with(this)
                             .load(currentUserDetails.profilePic)
                             .circleCrop()

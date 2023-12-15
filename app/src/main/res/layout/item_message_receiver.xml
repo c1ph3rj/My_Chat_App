@@ -1,20 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingHorizontal="10dp"
-    android:paddingVertical="6dp">
+    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/messageTextView"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/edit_text_background"
-        android:backgroundTint="@color/receiverSide"
+        android:paddingHorizontal="10dp"
+        android:layout_margin="6dp"
         android:maxWidth="300dp"
         android:padding="10dp"
-        android:text="Hello World"
-        android:textColor="@color/black" />
+        android:background="@drawable/edit_text_background"
+        android:backgroundTint="@color/receiverSide"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/messageTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hello World"
+            android:textSize="14dp"
+            android:textColor="@color/black" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10dp"
+                android:text="hello"
+                android:textStyle="bold"
+                android:tooltipText="Hello There"
+                android:id="@+id/userNameView"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10dp"
+                android:text="."
+                android:paddingHorizontal="3dp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10dp"
+                android:id="@+id/timeDateView"
+                android:text="2023/01/10 03:30 PM"/>
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -112,9 +112,14 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    ArrayList<ContactDetails> allContacts = getAllContacts(ContactsScreen.this);
-                    FirebaseHelper firebaseHelper = new FirebaseHelper();
-                    firebaseHelper.checkAndStoreUserDetails(allContacts, ContactsScreen.this);
+                    try {
+                        ArrayList<ContactDetails> allContacts = getAllContacts(ContactsScreen.this);
+                        FirebaseHelper firebaseHelper = new FirebaseHelper();
+                        firebaseHelper.checkAndStoreUserDetails(allContacts, ContactsScreen.this);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        progressDialog.dismiss();
+                    }
                 }
             }).start();
 

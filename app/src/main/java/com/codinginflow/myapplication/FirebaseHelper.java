@@ -38,6 +38,7 @@ import java.util.Objects;
 
 public class FirebaseHelper {
     private final CollectionReference usersCollection;
+    private CollectionReference messagesCollection;
     private final DatabaseReference phoneNumbersRef;
     private final DatabaseReference messagesRef;
     private final StorageReference storageRef;
@@ -46,11 +47,12 @@ public class FirebaseHelper {
     public FirebaseHelper() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseDatabase database = FirebaseDatabase.getInstance();
+        FirebaseStorage firebaseStorage =  FirebaseStorage.getInstance();
 
-        phoneNumbersRef = database.getReference("phoneNumbers");
         usersCollection = db.collection("users");
+        phoneNumbersRef = database.getReference("phoneNumbers");
         messagesRef = database.getReference("messages");
-        storageRef = FirebaseStorage.getInstance().getReference(currentUser.getUid());
+        storageRef = firebaseStorage.getReference(currentUser.getUid());
         usersInDb = new ArrayList<>();
     }
 
@@ -93,9 +95,9 @@ public class FirebaseHelper {
                 UserDetails userDetails = task.getResult().toObject(UserDetails.class);
                 // Extract otherUserUUIDs from the messages
                 if (userDetails != null) {
-                    if (userDetails.messages != null && !userDetails.messages.isEmpty()) {
-                        for (String eachChatsId : userDetails.messages) {
-                            String eachUUID = removeCurrentUserFromChatId(eachChatsId, currentUser.getUid());
+                    if (userDetails.messages != null) {
+                        for (Message eachMessage : userDetails.messages) {
+                            String eachUUID = removeCurrentUserFromChatId(eachMessage.messageId, currentUser.getUid());
                             otherUserUUIDs.add(eachUUID);
                         }
 
@@ -113,7 +115,7 @@ public class FirebaseHelper {
         });
     }
 
-    private void fetchUserDetailsForUUIDs(ArrayList<String> userUUIDs, LoadMessagesCallBack callback, ArrayList<String> messages) {
+    private void fetchUserDetailsForUUIDs(ArrayList<String> userUUIDs, LoadMessagesCallBack callback, ArrayList<Message> messages) {
         ArrayList<UserDetails> userDetailsList = new ArrayList<>();
 
         // Fetch user details for each userUUID
@@ -125,10 +127,10 @@ public class FirebaseHelper {
                         UserDetails userDetails = document.toObject(UserDetails.class);
                         if (userDetails != null) {
                             if (currentUserDetails.messages != null) {
-                                for (String oldMessageId : currentUserDetails.messages) {
-                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), oldMessageId);
+                                for (Message eachMessage : currentUserDetails.messages) {
+                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), eachMessage.messageId);
                                     if (otherId.equals(userDetails.uuid)) {
-                                        userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
+                                        userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(eachMessage)).messageId;
                                     }
                                 }
 
@@ -175,15 +177,19 @@ public class FirebaseHelper {
     }
 
     void sendMessage(String senderId, ChatMessage chatMessage, UserDetails chatUser) {
-        ArrayList<String> messages = currentUserDetails.messages;
+        ArrayList<Message> messages = currentUserDetails.messages;
         String messageId = chatUser.messageId;
-        if (messages != null && !messages.isEmpty() && messages.stream().allMatch((eachChatId) -> (removeCurrentUserFromChatId(eachChatId, senderId).equals(chatUser.uuid)))) {
-            for (String oldMessageId : messages) {
-                String otherId = removeCurrentUserFromChatId(senderId, oldMessageId);
+        if (messages != null && !messages.isEmpty() && messages.stream().allMatch((eachMessage) -> (removeCurrentUserFromChatId(eachMessage.messageId, senderId).equals(chatUser.uuid)))) {
+            for (Message eachMessage : messages) {
+                String otherId = removeCurrentUserFromChatId(senderId, eachMessage.messageId);
                 if (otherId.equals(chatUser.uuid)) {
-                    messageId = messages.get(messages.indexOf(oldMessageId));
+                    messageId = messages.get(messages.indexOf(eachMessage)).messageId;
                 }
             }
+            Map<String, Object> updateMap = new HashMap<>();
+            updateMap.put("messages", new Message(messageId, chatMessage.message));
+            updateMessageDetails(senderId, updateMap);
+            updateMessageDetails(chatUser.uuid, updateMap);
             messagesRef.child(messageId).child(String.valueOf(System.nanoTime())).setValue(chatMessage);
         } else {
             String finalMessageId = messageId;
@@ -194,7 +200,7 @@ public class FirebaseHelper {
                         if (!snapshot.exists()) {
                             if (currentUser != null) {
                                 Map<String, Object> updateMap = new HashMap<>();
-                                updateMap.put("messages", FieldValue.arrayUnion(finalMessageId));
+                                updateMap.put("messages", new Message(finalMessageId, chatMessage.message));
 
                                 updateMessageDetails(senderId, updateMap);
                                 updateMessageDetails(chatUser.uuid, updateMap);
@@ -213,20 +219,48 @@ public class FirebaseHelper {
         }
     }
 
+    public void updateMessageCollection(String userId, Message message) {
+        try {
+            usersCollection.document(userId)
+                    .collection("messages")
+                    .document(message.messageId)
+                    .set(message)
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            if(task.isSuccessful()) {
+                                System.out.println("Added Or Updated Successfully");
+                            }
+                        }
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void updateMessageDetails(String userId, Map<String, Object> updateMap) {
         try {
-            usersCollection.document(userId).set(updateMap, SetOptions.merge())
-                    .addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void aVoid) {
-                            // Handle success
-                            System.out.println("Document updated successfully!");
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        // Handle failure
-                        System.err.println("Error updating document: " + e.getMessage());
-                    });
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        usersCollection.document(userId).set(updateMap, SetOptions.merge())
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        // Handle success
+                                        System.out.println("Document updated successfully!");
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    // Handle failure
+                                    System.err.println("Error updating document: " + e.getMessage());
+                                });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -323,10 +357,10 @@ public class FirebaseHelper {
                     if (userDetails != null) {
                         if (currentUserDetails != null) {
                             if (currentUserDetails.messages != null) {
-                                for (String oldMessageId : currentUserDetails.messages) {
-                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), oldMessageId);
+                                for (Message eachMessage : currentUserDetails.messages) {
+                                    String otherId = removeCurrentUserFromChatId(currentUser.getUid(), eachMessage.messageId);
                                     if (otherId.equals(userDetails.uuid)) {
-                                        userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(oldMessageId));
+                                        userDetails.messageId = currentUserDetails.messages.get(currentUserDetails.messages.indexOf(eachMessage)).messageId;
                                     }
                                 }
 

@@ -12,7 +12,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class ChatAdapter extends ArrayAdapter<ChatMessage> {
 
@@ -62,6 +65,8 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage> {
             viewHolder = new ViewHolder();
 
             viewHolder.messageTextView = convertView.findViewById(R.id.messageTextView);
+            viewHolder.dateTimeView = convertView.findViewById(R.id.timeDateView);
+            viewHolder.userNameView = convertView.findViewById(R.id.userNameView);
 
             convertView.setTag(viewHolder);
         } else {
@@ -78,6 +83,13 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage> {
 
         if (message != null) {
             viewHolder.messageTextView.setText(message.getMessage());
+            if(message.senderName != null) {
+                viewHolder.userNameView.setText(message.senderName);
+                viewHolder.userNameView.setVisibility(View.VISIBLE);
+            } else {
+                viewHolder.userNameView.setVisibility(View.GONE);
+            }
+            viewHolder.dateTimeView.setText(convertMillisToDateTime(message.timestamp));
         }
 
 
@@ -104,5 +116,15 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage> {
 
     private static class ViewHolder {
         TextView messageTextView;
+        TextView userNameView;
+        TextView dateTimeView;
+    }
+
+    public static String convertMillisToDateTime(long currentTimeMillis) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd hh:mm a", Locale.getDefault());
+
+        Date date = new Date(currentTimeMillis);
+
+        return sdf.format(date);
     }
 }

@@ -1,6 +1,7 @@
 package com.codinginflow.myapplication;
 
 import static com.codinginflow.myapplication.MainActivity.currentUser;
+import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,6 +14,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.GlideException;
 import com.google.firebase.database.DatabaseError;
 
 import java.util.ArrayList;
@@ -26,6 +29,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
     CardView sendBtn;
     EditText messageTextView;
     ListView chatMessagesView;
+    ImageView userProfileView;
     ChatAdapter chatAdapter;
     ArrayList<ChatMessage> chatMessages;
     boolean isPaginationEnabled;
@@ -62,6 +66,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
             nameView = findViewById(R.id.nameView);
             backBtn = findViewById(R.id.backBtn);
             sendBtn = findViewById(R.id.sendBtn);
+            userProfileView = findViewById(R.id.userProfileView);
             messageTextView = findViewById(R.id.messageTextView);
             chatMessagesView = findViewById(R.id.chatMessagesView);
             chatAdapter = new ChatAdapter(this, new ArrayList<>());
@@ -77,6 +82,14 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
 
             nameView.setText(chatUser.userName);
 
+            if(chatUser.profilePic != null && !chatUser.profilePic.isEmpty()) {
+                Glide.with(this)
+                        .load(chatUser.profilePic)
+                        .error(R.drawable.profile_ic)
+                        .circleCrop()
+                        .into(userProfileView);
+            }
+
             sendBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -90,6 +103,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                     chatMessage.message = messageText;
                     chatMessage.senderId = currentUser.getUid();
                     chatMessage.timestamp = System.currentTimeMillis();
+                    chatMessage.senderName = currentUserDetails.userName;
 
                     firebaseHelper.sendMessage(currentUser.getUid(), chatMessage, chatUser);
                     messageTextView.setText("");

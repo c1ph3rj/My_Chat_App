@@ -4,6 +4,7 @@ public class ChatMessage {
     public String senderId;
     public String message;
     public long timestamp;
+    public String senderName;
 
     public ChatMessage() {
         // Default constructor required for Firebase
