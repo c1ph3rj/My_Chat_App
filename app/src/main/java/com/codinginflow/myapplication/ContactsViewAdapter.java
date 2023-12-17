@@ -2,6 +2,9 @@ package com.codinginflow.myapplication;
 
 // UserDetailsAdapter.java
 
+import static com.codinginflow.myapplication.MainActivity.currentUser;
+import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -55,7 +58,16 @@ public class ContactsViewAdapter extends RecyclerView.Adapter<ContactsViewAdapte
             @Override
             public void onClick(View v) {
                 Intent startChatIntent = new Intent(activity, ChatScreen.class);
-                startChatIntent.putExtra("user", userDetails);
+                UserChat chatUser = new UserChat();
+                chatUser.messageId = userDetails.messageId;
+                chatUser.user1Name = currentUserDetails.userName;
+                chatUser.user1Id = currentUserDetails.uuid;
+                chatUser.user1ProfilePicture = currentUserDetails.profilePic;
+                chatUser.user2Name = userDetails.userName;
+                chatUser.user2Id = userDetails.uuid;
+                chatUser.user2ProfilePicture = userDetails.profilePic;
+                chatUser.isExists = userDetails.isExists;
+                startChatIntent.putExtra("user", chatUser);
                 activity.startActivity(startChatIntent);
             }
         });

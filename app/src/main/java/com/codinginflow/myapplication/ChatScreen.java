@@ -5,6 +5,7 @@ import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -15,7 +16,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.GlideException;
 import com.google.firebase.database.DatabaseError;
 
 import java.util.ArrayList;
@@ -23,7 +23,7 @@ import java.util.List;
 
 public class ChatScreen extends AppCompatActivity implements FirebaseHelper.RealtimeDataListener<ChatMessage> {
     TextView nameView;
-    UserDetails chatUser;
+    UserChat chatUser;
     ImageView backBtn;
     FirebaseHelper firebaseHelper;
     CardView sendBtn;
@@ -31,7 +31,10 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
     ListView chatMessagesView;
     ImageView userProfileView;
     ChatAdapter chatAdapter;
-    ArrayList<ChatMessage> chatMessages;
+    String userName;
+    String profilePic;
+    boolean isUser1;
+    String uuid;
     boolean isPaginationEnabled;
     String messageId;
     int PAGE_SIZE = 30;
@@ -45,16 +48,27 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
 
         Intent intent = getIntent();
         if (intent.hasExtra("user")) {
-            UserDetails userDetails = (UserDetails) intent.getSerializableExtra("user");
+            UserChat userDetails = (UserChat) intent.getSerializableExtra("user");
             if (userDetails != null) {
-                firebaseHelper = new FirebaseHelper();
                 chatUser = userDetails;
                 if (chatUser.messageId != null) {
                     messageId = chatUser.messageId;
                 } else {
-                    messageId = firebaseHelper.generateChatId(currentUser.getUid(), chatUser.uuid);
+                    messageId = firebaseHelper.generateChatId(currentUser.getUid(), uuid);
                     chatUser.messageId = messageId;
                 }
+                isUser1 = !currentUser.getUid().equals(chatUser.user1Id);
+                if(isUser1) {
+                    userName = chatUser.user1Name;
+                    profilePic = chatUser.user1ProfilePicture;
+                    uuid = chatUser.user1Id;
+                } else {
+                    userName = chatUser.user2Name;
+                    profilePic = chatUser.user2ProfilePicture;
+                    uuid = chatUser.user2Id;
+                }
+                firebaseHelper = new FirebaseHelper();
+
             }
         }
 
@@ -73,6 +87,8 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
             chatMessagesView.setAdapter(chatAdapter);
 
             firebaseHelper = new FirebaseHelper();
+
+
             backBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -80,11 +96,13 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                 }
             });
 
-            nameView.setText(chatUser.userName);
 
-            if(chatUser.profilePic != null && !chatUser.profilePic.isEmpty()) {
+
+            nameView.setText(userName);
+
+            if(profilePic != null && !profilePic.isEmpty()) {
                 Glide.with(this)
-                        .load(chatUser.profilePic)
+                        .load(profilePic)
                         .error(R.drawable.profile_ic)
                         .circleCrop()
                         .into(userProfileView);
@@ -104,8 +122,14 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
                     chatMessage.senderId = currentUser.getUid();
                     chatMessage.timestamp = System.currentTimeMillis();
                     chatMessage.senderName = currentUserDetails.userName;
-
-                    firebaseHelper.sendMessage(currentUser.getUid(), chatMessage, chatUser);
+                    if (!isUser1) {
+                        chatUser.isUser2Opened = false;
+                    } else {
+                        chatUser.isUser1Opened = false;
+                    }
+                    chatUser.updatedTimeChamp = String.valueOf(System.currentTimeMillis());
+                    chatUser.lastMessage = chatMessage.message;
+                    firebaseHelper.sendMessage(chatUser, chatMessage);
                     messageTextView.setText("");
                 }
             });
@@ -121,7 +145,7 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
         // Set a large timestamp to get the latest messages
         long lastTimestamp = Long.MAX_VALUE;
 
-        firebaseHelper.fetchChatsForMessageId(messageId, PAGE_SIZE, new FirebaseHelper.LoadChatsCallBack() {
+        firebaseHelper.fetchMessagesForMessageId(messageId, PAGE_SIZE, new FirebaseHelper.LoadChatsCallBack() {
             @Override
             public void onChatsLoaded(List<ChatMessage> chatMessageList, boolean hasMore) {
                 // Update your adapter or UI with the loaded messages
@@ -166,5 +190,11 @@ public class ChatScreen extends AppCompatActivity implements FirebaseHelper.Real
     @Override
     public void onError(DatabaseError databaseError) {
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        firebaseHelper.updateModelIsOpened((!isUser1) ? "isUser1Opened" : "isUser2Opened", messageId);
     }
 }

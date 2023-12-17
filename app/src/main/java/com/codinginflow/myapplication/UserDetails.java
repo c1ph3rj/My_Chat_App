@@ -10,8 +10,16 @@ public class UserDetails implements Serializable {
     public String profilePic;
     public String aboutDetails;
     public String messageId;
-    public ArrayList<Message> messages;
-
+    public boolean isExists;
     public UserDetails() {
+    }
+
+    public UserDetails(String userName, String uuid, String phoneNumber, String profilePic, String aboutDetails, String messageId) {
+        this.userName = userName;
+        this.uuid = uuid;
+        this.phoneNumber = phoneNumber;
+        this.profilePic = profilePic;
+        this.aboutDetails = aboutDetails;
+        this.messageId = messageId;
     }
 }

@@ -1,5 +1,7 @@
 package com.codinginflow.myapplication;
 
+import static com.codinginflow.myapplication.MainActivity.currentUserDetails;
+
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -23,7 +25,7 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
     ImageView backBtn;
 
     @SuppressLint("Range")
-    public static ArrayList<ContactDetails> getAllContacts(Context context) {
+    public ArrayList<ContactDetails> getAllContacts(Context context) {
         ArrayList<ContactDetails> contactList = new ArrayList<>();
         ContentResolver contentResolver = context.getContentResolver();
 
@@ -53,15 +55,32 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
                 // Create ContactDetails object and add to the list
 
                 ContactDetails contactDetails = new ContactDetails();
-                contactDetails.mobileNumber = phoneNumber;
+                contactDetails.mobileNumber = sanitizePhoneNumber(phoneNumber);
                 contactDetails.contactName = contactName;
                 contactDetails.contactId = contactId;
-                contactList.add(contactDetails);
+                if (!contactDetails.mobileNumber.isEmpty()) {
+                    if (currentUserDetails.phoneNumber != null) {
+                        if (!currentUserDetails.phoneNumber.equals(contactDetails.mobileNumber)) {
+                            contactList.add(contactDetails);
+                        }
+                    }
+                }
             }
             cursor.close();
         }
 
         return contactList;
+    }
+
+    private String sanitizePhoneNumber(String phoneNumber) {
+        // Replace "+91" with an empty string
+        phoneNumber = phoneNumber.replace("+91", "");
+
+        // Remove any remaining "+" signs
+        phoneNumber = phoneNumber.replaceAll("[^0-9]", "");
+
+        // If the phone number starts with "0", remove the leading "0"
+        return (phoneNumber.startsWith("0") ? phoneNumber.substring(1) : phoneNumber).trim();
     }
 
     @Override
@@ -115,7 +134,11 @@ public class ContactsScreen extends AppCompatActivity implements FirebaseHelper.
                     try {
                         ArrayList<ContactDetails> allContacts = getAllContacts(ContactsScreen.this);
                         FirebaseHelper firebaseHelper = new FirebaseHelper();
-                        firebaseHelper.checkAndStoreUserDetails(allContacts, ContactsScreen.this);
+                        if(allContacts.isEmpty()) {
+                            progressDialog.dismiss();
+                        } else {
+                            firebaseHelper.checkAndStoreUserDetails(allContacts, ContactsScreen.this);
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                         progressDialog.dismiss();
